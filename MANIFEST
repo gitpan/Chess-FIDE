@@ -1,0 +1,9 @@
+Changes
+Makefile.PL
+MANIFEST
+README
+APR04FRL.TXT
+t/Chess-FIDE.t
+lib/Chess/FIDE.pm
+lib/Chess/FIDE/Player.pm
+META.yml                                 Module meta-data (added by MakeMaker)
