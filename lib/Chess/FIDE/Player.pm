@@ -1,6 +1,6 @@
 package Chess::FIDE::Player;
 
-use 5.008003;
+use 5.008;
 use strict;
 use warnings;
 
@@ -9,59 +9,54 @@ use Carp;
 
 our @ISA = qw(Exporter);
 
-our @FIDE_field = qw(id surname name title country rating games birthday flag);
+our @FIDE_field = qw(
+	id surname givenname name title federation rating games year flags
+);
+our @FIDE_default = (
+	0, '', '', '', '', '', 0, 0, 0, ''
+);
+our @EXPORT = qw(@FIDE_field);
+our $AUTOLOAD;
+our $VERSION = '1.10';
 
-our @EXPORT = qw(
-		 @FIDE_field
-		);
-
-our $VERSION = '1.00';
-
-sub new {
+sub new ($;@) {
 
     my $self = shift;
     my $class = ref($self) || $self;
     my %param = @_;
+
     my $player = {};
-    my %init = (id=>3000000,surname=>'Surname',name=>'Name',title=>' ',country=>'FID',
-		rating=>1000,games=>0,birthday=>'  .  .  ',flag=>' ');
     bless $player,$class;
-    my $id = $init{id};
+	my $f = 0;
     for (@FIDE_field) {
-	unless (defined $param{$_}) {
-	    if ($_ eq 'id') {
-		$param{id} = $id++;
-		print "ID $param{id}\n";
-	    }
-	    else {
-		$param{id} = $init{id};
-	    }
+		$player->{$_} = $param{$_} || $FIDE_default[$f];
+		$f++;
 	}
-	$player->{$_} = $param{$_};
-    }
     return $player;
 }
-sub value {
 
-    my $player = shift;
-    my $field = shift;
-    my $value = shift;
+sub AUTOLOAD ($;$) {
 
-    return undef if !grep(/^$field/,@FIDE_field);
-    $player->{$field} = $value if defined $value;
-    return $player->{$field};
+	my $self  = shift;
+	my $param = shift;
+
+	my $method = $AUTOLOAD;
+	$method = lc $method;
+	my @path = split(/\:\:/, $method);
+	$method = pop @path;
+	return if $method =~ /^destroy$/;
+	unless (exists $self->{$method}) {
+		carp "No such method or property $method";
+		return undef;
+	}
+	$self->{$method} = $param if ($param);
+	return $self->{$method};
 }
-sub id {
 
-    my $player = shift;
-
-    return $player->{id};
-}
 # Preloaded methods go here.
 
 1;
 __END__
-# Below is stub documentation for your module. You'd better edit it!
 
 =head1 NAME
 

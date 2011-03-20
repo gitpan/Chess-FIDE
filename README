@@ -1,38 +1,55 @@
-Chess-FIDE version 0.01
-=======================
+Chess-FIDE
 
-This package contains a library providing an interface for retrieval
-and manipulation of the chess players who are listed in the FIDE Official
-Rating List (http://www.fide.com/ratings/download.phtml)
-FIDE is Federation International d'Echecs - International Chess Federation.
+The README is used to introduce the module and provide instructions on
+how to install the module, any machine dependencies it may have (for
+example C compilers and installed libraries) and any other information
+that should be provided before the module is installed.
 
-A sample list from April 2004 is provided under filename APR04FRL.TXT
+A README file is required for CPAN modules since CPAN extracts the README
+file from a module distribution so that people browsing the archive
+can use it to get an idea of the module's uses. It is usually a good idea
+to provide version information here so that people can decide whether
+fixes for the module are worth downloading.
+
+
 INSTALLATION
 
-To install this module type the following:
+To install this module, run the following commands:
 
-   perl Makefile.PL
-   make
-   make test
-   make install
+	perl Build.PL
+	./Build
+	./Build test
+	./Build install
 
-DEPENDENCIES
+SUPPORT AND DOCUMENTATION
 
-LWP::UserAgent
-IO::File
-IO::Scalar
-Archive::Zip
-Archive::Zip::MemberRead
+After installing, you can find documentation for this module with the
+perldoc command.
 
-COPYRIGHT AND LICENCE
+    perldoc Chess::FIDE
 
-Put the correct copyright and licence information here.
+You can also look for information at:
 
-Copyright (C) 2004 by Roman M. Parparov
+    RT, CPAN's request tracker
+        http://rt.cpan.org/NoAuth/Bugs.html?Dist=Chess-FIDE
 
-This library is free software; you can redistribute it and/or modify
-it under the same terms as Perl itself, either Perl version 5.8.3 or,
-at your option, any later version of Perl 5 you may have available.
+    AnnoCPAN, Annotated CPAN documentation
+        http://annocpan.org/dist/Chess-FIDE
 
-Fide Rating List is Copyright (C) by International Chess Federation
-http://www.fide.com
+    CPAN Ratings
+        http://cpanratings.perl.org/d/Chess-FIDE
+
+    Search CPAN
+        http://search.cpan.org/dist/Chess-FIDE/
+
+
+LICENSE AND COPYRIGHT
+
+Copyright (C) 2011 Roman M. Parparov
+
+This program is free software; you can redistribute it and/or modify it
+under the terms of either: the GNU General Public License as published
+by the Free Software Foundation; or the Artistic License.
+
+See http://dev.perl.org/licenses/ for more information.
+

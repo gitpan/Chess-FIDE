@@ -1,6 +1,5 @@
-Revision history for Perl extension Chess::FIDE.
+Revision history for Chess-FIDE
 
-0.01  Tue Jun  8 16:29:21 2004
-	- original version; created by h2xs 1.23 with options
-		-AX -n Chess::FIDE
+0.01    Date/time
+        First version, released on an unsuspecting world.
 

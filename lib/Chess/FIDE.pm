@@ -1,13 +1,14 @@
 package Chess::FIDE;
 
-use 5.008003;
+use 5.008;
 use strict;
-use warnings;
+use warnings FATAL => 'all';
 
 use Exporter;
 use Carp;
 use LWP::UserAgent;
-use IO::Scalar;
+use IO::File;
+use IO::String;
 use Archive::Zip qw( :ERROR_CODES :CONSTANTS );
 use Archive::Zip::MemberRead;
 
@@ -15,143 +16,168 @@ use Chess::FIDE::Player qw(@FIDE_field);
 
 our @ISA = qw(Exporter);
 
-our $VERSION = '1.00';
+our $VERSION = '1.10';
 
-sub new {
+my $data_offsets = [
+	[qw(title 45)],
+	[qw(federation 49)],
+	[qw(rating   54)],
+	[qw(games   59)],
+	[qw(year  65)],
+	[qw(flags  70)],
+];
 
-    my $self = shift;
+our $DATA_URL = 'http://ratings.fide.com/download/players_list.zip';
+
+sub new ($;@) {
+
+    my $self  = shift;
     my $class = ref($self) || $self;
     my %param = @_;
-    my $fide = {};
+
+    my $fide = [];
     my $line;
+
     bless $fide,$class;
     if ($param{-file}) {
-	my $fh = IO::File->new($param{-file},'r');
-	if (defined $fh) {
-            while (defined($line = $fh->getline())) {
-		next unless $line =~ /^\s*\d/;
-		my $player = $self->parseLine($line);
-		if ($player eq -1) {
-		    $fh->close();
-		    return {};
+		my $fh = IO::File->new($param{-file},'r');
+		if (defined $fh) {
+			$fide->parseFile($fh);
 		}
 		else {
-		    $fide->{$player->id()} = $player;
+			warn "$!: $param{-file}\n";
+			return {};
 		}
-            }
-	    $fh->close();
-	}
-	else {
-	    warn "$!: $param{-file}\n";
-	}
     }
-    if ($param{-www}) {
-	my($mon,$year) = (localtime(time))[4,5];
-	my($tmon,$tyear);
-	$tyear = sprintf "%02d",$year-100;
-	if ($mon < 3) {
-	    $tmon = 'jan';
-	}
-	elsif ($mon < 6) {
-	    $tmon = 'apr';
-	}
-	elsif ($mon < 9) {
-	    $tmon = 'jul';
-	}
-	else {
-	    $tmon = 'oct';
-	}
-        my @content = ();
-        my $url = "http://www.fide.com/ratings/download/$tmon${tyear}frl.zip";
+    elsif ($param{-www}) {
         my $ua = LWP::UserAgent->new();
-        if ($param{-proxy}) {
-            $ua->proxy(['http'],$param{-proxy});
-        }
-        my $webcontent = $ua->get($url)->content();
-        my $fh = IO::Scalar->new(\$webcontent);
+        $ua->proxy(['http'],$param{-proxy}) if $param{-proxy};
+        my $webcontent = $ua->get($DATA_URL)->content();
+        my $fh = IO::String->new(\$webcontent) or die "BLAAAH\n";
         my $zip = Archive::Zip->new();
         my $status = $zip->readFromFileHandle($fh);
-	return $fide unless $status == AZ_OK;
-        my @membername = $zip->memberNames();
+		unless ($status == AZ_OK) {
+			warn "Problems unzipping the downloaded file";
+			return {};
+		}
         my $membername;
-        my $line;
-        for $membername (@membername) {
-            my $fh2 =  new Archive::Zip::MemberRead($zip, $membername);
-	    return $fide unless defined $fh2;
-            while (defined($line = $fh2->getline())) {
-		next unless $line =~ /^\s*\d/;
-		my $player = $self->parseLine($line);
-		if ($player eq -1) {
-		    $fh->close();
-		    $fh2->close();
-		    return {};
-		}
-		else {
-		    $fide->{$player->id()} = $player;
-		}
-            }
-	    $fh2->close();
+        for $membername ($zip->memberNames()) {
+            my $fh2 = Archive::Zip::MemberRead->new($zip, $membername);
+			return $fide unless defined $fh2;
+			$fide->parseFile($fh2);
         }
-	$fh->close();
+		$fh->close();
     }
+	else {
+		warn "No source (-file or -www) given";
+	}
     return $fide;
 }
-sub parseLine {
+
+sub parseFile ($$) {
+
+	my $fide = shift;
+	my $fh   = shift;
+
+	my $line;
+	while (defined($line = $fh->getline())) {
+		next unless $line =~ /^\s*\d/;
+		my $player = $fide->parseLine($line);
+		push(@{$fide}, $player) if $player;
+	}
+	$fh->close();
+}
+
+sub parseIdAndName ($$) {
+
+	my $self = shift;
+	my $id_and_name = shift;
+
+	my ($id, $givenname, $surname) =
+		($id_and_name =~ /^\s*(\d+)\s+(.*?)\,?\s+(\S+|\S+\s+\S+)/);
+
+    if ($id_and_name =~ /\S\,\s*\S/) {
+		my $tmp = $surname;
+		$surname = $givenname;
+		$givenname = $tmp;
+    }
+    $givenname =~ s/^\s+//;
+    $givenname =~ s/\s+$//;
+    $surname =~ s/^\s+//;
+    $surname =~ s/\s+$//;
+	my $name =
+		!$givenname ? $surname : !$surname ? $givenname : "$givenname $surname";
+
+	return ($id, $name, $givenname, $surname);
+}
+
+sub parseRest ($$){
+
+	my $self = shift;
+	my $rest = shift;
+
+	my %data = ();
+
+	my $start_offset = $data_offsets->[0][1];
+	for my $i (0..$#{$data_offsets}) {
+		my $offset = $data_offsets->[$i][1] - $start_offset;
+		my $d_offset = $i == $#{$data_offsets} ?
+			"" : $data_offsets->[$i+1][1] - $data_offsets->[$i][1];
+		last if $offset > length($rest);
+		if ($i == $#{$data_offsets}) {
+			$data{$data_offsets->[$i][0]} = substr($rest, $offset);
+		}
+		else {
+			$data{$data_offsets->[$i][0]} =	substr(
+				$rest, $offset,
+				$data_offsets->[$i+1][1] - $data_offsets->[$i][1]
+			);
+		}
+		$data{$data_offsets->[$i][0]} =~ s/\s//g;
+	}
+	return %data;
+}
+
+sub parseLine ($$) {
 
     my $self = shift;
     my $line = shift;
-    my $player;
-    my %param = ();
 
-    $line =~ s/\r\n//;
-    my($id,$surname,$name,$title,$country,$rating,$games,$day,$month,$year,$flag) =
-      ($line =~ /^\s*(\d+)\s+(.*)\,?(\S+|\S+\s\S+)\s+([a-z]+|\s+)\s+(\S\S\S)\s+(\d+)\s+(\d+)\s+(..)\.(..)\.(..)\s*(\S*)/);
-    if ($surname =~ /^(.*)\,(.*)$/) {
-	$surname = $1;
-	$name = $2.$name;
-    }
-    if ($name =~ /(.*\S)\s+\s\s\S+/) {
-	$name = $1;
-    }
-    $name =~ s/^\s+//;
-    $surname =~ s/^\s+//;
-    $name =~ s/\s+$//;
-    $surname =~ s/\s+$//;
-    $flag = ' ' unless defined $flag;
-    $title = substr($line,44,2);
-    $title =~ s/\s+$//;
-    $title = ' ' unless $title;
-    if (defined $id && defined $surname && defined $name && defined $title &&
-	defined $country && defined $rating && defined $games && defined $day
-	&& defined $month && defined $year && defined $flag) {
-	$param{id} = $id; $param{surname} = $surname; $param{name} = $name;
-	$param{title} = $title; $param{country} = $country; $param{rating} = $rating;
-	$param{games} = $games; $param{flag} = $flag;
-	$param{birthday} = $year.$month.$day;
-    }
-    else {
-	warn "Problems with line $line\n";
-	return -1;
-    }
-    $player = Chess::FIDE::Player->new(%param);
+	chomp $line;
+	$line =~ s/\s+$//;
+	my $id_and_name = substr($line, 0, $data_offsets->[0][1] - 1);
+	my $rest = substr($line, $data_offsets->[0][1] - 1);
+	my ($id, $name, $givenname, $surname) = $self->parseIdAndName($id_and_name);
+	my $player = Chess::FIDE::Player->new(
+		id => $id,
+		name => $name,
+		givenname => $givenname,
+		surname => $surname,
+	);
+	my %rest = $self->parseRest($rest);
+	for my $field (keys %rest) {
+		$player->$field($rest{$field});
+	}
+
     return $player;
 }
+
 sub fideSearch {
 
     my $fide = shift;
     my $criteria = shift;
 
+	my $found = 0;
     for my $field (@FIDE_field) {
-	if ($criteria =~ /^$field/) {
-	    $criteria =~ s/^($field)/'$fide->{$_}->{'.$field.'}'/ge;
-	}
-	else {
-	    $criteria =~ s/(\W)($field)/$1.'$fide->{$_}->{'.$field.'}'/ge;
-	}
+		if ($criteria =~ /^$field /) {
+			$criteria =~ s/^($field)/'$_->{'.$field.'}'/ge;
+			$found = 1;
+			last;
+		}
     }
-    print "Using $criteria\n";
-    my @player = grep(eval $criteria, keys %{$fide});
-    return map ($fide->{$_},@player);
+	die "Invalid criteria supplied" unless $found;
+    my @player = grep(eval $criteria, @{$fide});
+    return @player;
 }
 
 1;
@@ -174,7 +200,7 @@ International Chess Federation that every quarter of the year
 releases a list of its rated members. The list contains about
 fifty thousand entries. This module is designed to parse its
 contents and to search across it using perl expressions.
-A sample list from April 2004 is provided under filename APR04FRL.TXT
+A sample from an up-to-date FIDE list is provided in t/data/test-list.txt
 The following methods are available:
 
 =over
@@ -230,7 +256,7 @@ LWP::UserAgent
 
 =head1 AUTHOR
 
-Roman M. Parparov, E<lt>romm@empire.tau.ac.ilE<gt>
+Roman M. Parparov, E<lt>roman@parparov.comE<gt>
 
 =head1 COPYRIGHT AND LICENSE
 
