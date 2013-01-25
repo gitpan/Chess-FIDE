@@ -4,7 +4,9 @@ use strict;
 use warnings;
 
 use Chess::FIDE;
-use Test::More tests => 30003;
+use Test::More tests => 30004;
+
+use Net::Ping;
 
 my $fide = Chess::FIDE->new();
 isa_ok($fide, 'Chess::FIDE');
@@ -25,5 +27,16 @@ is(scalar @res, 4, "Four exact matches found");
 $fide = Chess::FIDE->new(
 	-www => 1,
 );
-ok(scalar @{$fide} > 99999, "Lots of players parsed");
+if (! $fide) {
+	warn "You probably have problems with network connection or zip library\n";
+	pass("No players parsed");
+}
+else {
+	ok(scalar @{$fide} > 99999, "Lots of players parsed");
+}
 
+$Chess::FIDE::DATA_URL = 'http://non-existing-url.somewhere/nothing';
+$fide = Chess::FIDE->new(
+	-www => 1,
+);
+is($fide, 0, "failure expected at unreachable address");

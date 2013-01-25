@@ -16,7 +16,7 @@ use Chess::FIDE::Player qw(@FIDE_field);
 
 our @ISA = qw(Exporter);
 
-our $VERSION = '1.10';
+our $VERSION = '1.11';
 
 my $data_offsets = [
 	[qw(title 45)],
@@ -52,18 +52,26 @@ sub new ($;@) {
     elsif ($param{-www}) {
         my $ua = LWP::UserAgent->new();
         $ua->proxy(['http'],$param{-proxy}) if $param{-proxy};
-        my $webcontent = $ua->get($DATA_URL)->content();
+		my $response = $ua->get($DATA_URL);
+		my $webcontent;
+		if ($response->is_success) {
+			$webcontent = $response->content();
+		}
+		else {
+			warn "Cannot download playerfile: Check your network connection\n";
+			return 0;
+		}
         my $fh = IO::String->new(\$webcontent) or die "BLAAAH\n";
         my $zip = Archive::Zip->new();
         my $status = $zip->readFromFileHandle($fh);
 		unless ($status == AZ_OK) {
 			warn "Problems unzipping the downloaded file";
-			return {};
+			return 0;
 		}
         my $membername;
         for $membername ($zip->memberNames()) {
             my $fh2 = Archive::Zip::MemberRead->new($zip, $membername);
-			return $fide unless defined $fh2;
+			return 0 unless defined $fh2;
 			$fide->parseFile($fh2);
         }
 		$fh->close();

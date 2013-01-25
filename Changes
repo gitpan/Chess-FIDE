@@ -1,5 +1,7 @@
 Revision history for Chess-FIDE
 
-0.01    Date/time
-        First version, released on an unsuspecting world.
+1.00   13/06/2004 - first more or less robust version
 
+1.10   20/03/2011 - major cleanup
+
+1.11   24/01/2013 - fixed network issues in tests
