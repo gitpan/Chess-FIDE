@@ -12,6 +12,7 @@ my $builder = Module::Build->new(
 	},
 	requires            => {
 		'IO::Scalar'               => 0,
+		'IO::String'               => 0,
 		'IO::File'                 => 0,
 		'LWP::UserAgent'           => 0,
 		'Archive::Zip'             => 0,

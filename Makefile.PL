@@ -12,6 +12,7 @@ WriteMakefile
                    'LWP::UserAgent' => 0,
                    'IO::Scalar' => 0,
                    'IO::File' => 0,
+                   'IO::String' => 0,
                    'Archive::Zip::MemberRead' => 0,
                    'Archive::Zip' => 0
                  }

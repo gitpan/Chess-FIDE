@@ -16,7 +16,7 @@ use Chess::FIDE::Player qw(@FIDE_field);
 
 our @ISA = qw(Exporter);
 
-our $VERSION = '1.11';
+our $VERSION = '1.12';
 
 my $data_offsets = [
 	[qw(title 45)],

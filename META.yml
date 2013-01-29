@@ -16,7 +16,7 @@ name: Chess-FIDE
 provides:
   Chess::FIDE:
     file: lib/Chess/FIDE.pm
-    version: 1.11
+    version: 1.12
   Chess::FIDE::Player:
     file: lib/Chess/FIDE/Player.pm
     version: 1.10
@@ -25,7 +25,8 @@ requires:
   Archive::Zip::MemberRead: 0
   IO::File: 0
   IO::Scalar: 0
+  IO::String: 0
   LWP::UserAgent: 0
 resources:
   license: http://dev.perl.org/licenses/
-version: 1.11
+version: 1.12
